@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="logo.png" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Terminal - Tiket TOUCH#14</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1d1f21;
+            color: #c5c8c6;
+            font-family: 'Courier New', Courier, monospace;
+            
+        }
+        .terminal-container {
+            background-color: #000;
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid #4d4d4d;
+            height: 512px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .command-line {
+            margin-bottom: 10px;
+        }
+        .input-line {
+            display: flex;
+            align-items: center;
+        }
+        .input-line input {
+            background-color: #1d1f21;
+            color: #c5c8c6;
+            border: none;
+            outline: none;
+            width: 100%;
+            padding-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="terminal-container" id="terminal">
+            <div class="command-line"></div>
+        </div>
+        <div class="input-line container">
+            <span class="text-success">root@terminal:</span><span class="text-primary">~</span># 
+            <input type="text" id="command-input" autofocus>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB6iD966wAmFi5hVZ6nAdumKntvyIgX5ac",
+            authDomain: "osistouch.firebaseapp.com",
+            projectId: "osistouch",
+            storageBucket: "osistouch.appspot.com",
+            messagingSenderId: "799157321751",
+            appId: "1:799157321751:web:844d86f1eb00ac7b255c52",
+            measurementId: "G-1S29PHFYXK"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const terminal = document.getElementById('terminal');
+        const inputField = document.getElementById('command-input');
+
+        // Command yang didukung
+        const commands = {
+            build: () => navigator.userAgent,
+            clear: () => {
+                terminal.innerHTML = '';
+                return 'Terminal cleared';
+            },
+            time: () => new Date().toLocaleTimeString(),
+            url: () => window.location.href,
+            help: () => 'Available commands: build, clear, time, url, db-<collection_name>, help, exit'
+        };
+
+        // Fungsi untuk mendapatkan data dari Firestore berdasarkan nama koleksi
+        async function getDataFromFirestore(collectionName) {
+            try {
+                // Ambil semua dokumen dari koleksi
+                const querySnapshot = await getDocs(collection(db, collectionName));
+                
+                // Jika tidak ada data
+                if (querySnapshot.empty) {
+                    return "No data found.";
+                }
+
+                // Loop melalui dokumen dan tampilkan data dengan nomor otomatis
+                let output = '';
+                let count = 1; // Inisialisasi nomor otomatis
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.user) {
+                        output += `<div>Ticket ${count}: Name: ${data.name}, ID: ${doc.id}, User: ${data.user}, Date: ${data.date}, Time: ${data.time}</div><br>`;
+                        count++; // Increment nomor otomatis
+                    }
+                });
+
+                // Jika tidak ada field 'user'
+                if (!output) {
+                    output = "No 'user' field found in documents.";
+                }
+
+                return output;
+            } catch (error) {
+                return `Error getting data: ${error.message}`;
+            }
+        }
+
+        // Proses input saat user tekan Enter
+        inputField.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                let input = inputField.value.trim();
+                processCommand(input);
+                inputField.value = '';
+            }
+        });
+
+        // Proses command
+        async function processCommand(input) {
+            // Tampilkan input di terminal
+            let command = document.createElement('div');
+            command.className = 'command-line';
+            command.innerHTML = `<span class="text-success">root@terminal:</span><span class="text-primary">~</span># ${input}`;
+            terminal.appendChild(command);
+
+            let output = '';
+
+            // Cek jika input adalah 'exit'
+            if (input.toLowerCase() === 'exit') {
+                window.location.href = 'admin.html';
+                return;
+            }
+
+            // Jika input dimulai dengan "db-", maka cari data dari Firebase
+            if (input.startsWith('db-')) {
+                const collectionName = input.slice(3); // Ambil nama collection setelah "db-"
+                output = await getDataFromFirestore(collectionName);
+            } else if (commands[input]) {
+                output = commands[input]();
+            } else {
+                output = `Command not found: ${input}`;
+            }
+
+            // Tampilkan hasilnya di terminal
+            if (output) {
+                let outputLine = document.createElement('div');
+                outputLine.className = 'command-line';
+                outputLine.innerHTML = output;
+                terminal.appendChild(outputLine);
+            }
+
+            // Scroll ke bawah setelah output
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+    </script>
+</body>
+</html>
