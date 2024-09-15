@@ -240,7 +240,7 @@
             const date = currentTime.toLocaleDateString();
             const time = currentTime.toLocaleTimeString();
             var userAgent = navigator.userAgent;
-            
+            const androidVersion = userAgent.match(/Android\s([0-9\.]+)/);
             
             try {
                 const id = Date.now().toString();
@@ -316,50 +316,57 @@
             }
         });
 
-        const searchForm = document.getElementById('searchForm');
-        searchForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const searchInput = document.getElementById('searchInput').value.toLowerCase();
-            const ticketsRef = collection(db, "tickets");
-            const ticketList = document.getElementById('ticketList');
-            ticketList.innerHTML = "";
+ const searchForm = document.getElementById('searchForm');
+searchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const searchInput = document.getElementById('searchInput').value.toLowerCase();
+    const ticketsRef = collection(db, "tickets");
+    const ticketList = document.getElementById('ticketList');
+    ticketList.innerHTML = "";
 
-            try {
-                const querySnapshot = await getDocs(ticketsRef);
-                querySnapshot.forEach((doc) => {
-                    const ticket = doc.data();
-                    if (ticket.name.toLowerCase().includes(searchInput)) {
-                        const members = Array.isArray(ticket.members) ? ticket.members.join(", ") : "N/A";
-                        const ticketItem = `
-                            <div class="card mb-3">
-                                <div class="card-body">
-                                    <h5 class="card-title">${ticket.name}</h5>
-                                    <p class="card-text">Paket: ${ticket.package}</p>
-                                    <p class="card-text">Harga: Rp${ticket.price}</p>
-                                    <p class="card-text">Anggota: ${members}</p>
-                                    <p class="card-text">Tanggal: ${ticket.date} ${ticket.time}</p>
-                                    <button class="btn btn-danger deleteBtn" data-id="${doc.id}">Hapus</button>
-                                </div>
-                            </div>
-                        `;
-                        ticketList.innerHTML += ticketItem;
-                    }
-                });
+    try {
+        const querySnapshot = await getDocs(ticketsRef);
+        querySnapshot.forEach((doc) => {
+            const ticket = doc.data();
 
-                const deleteButtons = document.querySelectorAll('.deleteBtn');
-                deleteButtons.forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const ticketId = e.target.getAttribute('data-id');
-                        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-                        confirmDeleteBtn.setAttribute('data-id', ticketId);
-                        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-                        modal.show();
-                    });
-                });
-            } catch (error) {
-                console.error("Error searching tickets: ", error);
+            // Pengecekan jika nama atau anggota mengandung searchInput
+            const isNameMatch = ticket.name.toLowerCase().includes(searchInput);
+            const isMemberMatch = Array.isArray(ticket.members) 
+                ? ticket.members.some(member => member.toLowerCase().includes(searchInput)) 
+                : false;
+
+            if (isNameMatch || isMemberMatch) {
+                const members = Array.isArray(ticket.members) ? ticket.members.join(", ") : "N/A";
+                const ticketItem = `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">${ticket.name}</h5>
+                            <p class="card-text">Paket: ${ticket.package}</p>
+                            <p class="card-text">Harga: Rp${ticket.price}</p>
+                            <p class="card-text">Anggota: ${members}</p>
+                            <p class="card-text">Tanggal: ${ticket.date} ${ticket.time}</p>
+                            <button class="btn btn-danger deleteBtn" data-id="${doc.id}">Hapus</button>
+                        </div>
+                    </div>
+                `;
+                ticketList.innerHTML += ticketItem;
             }
         });
+
+        const deleteButtons = document.querySelectorAll('.deleteBtn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const ticketId = e.target.getAttribute('data-id');
+                const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+                confirmDeleteBtn.setAttribute('data-id', ticketId);
+                const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+                modal.show();
+            });
+        });
+    } catch (error) {
+        console.error("Error searching tickets: ", error);
+    }
+});
 
         const logoutBtn = document.getElementById('logoutBtn');
         logoutBtn.addEventListener('click', async () => {
